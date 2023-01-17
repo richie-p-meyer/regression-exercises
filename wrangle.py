@@ -141,6 +141,7 @@ df.bedroomcnt.min()
 
 
 def wrangle_zillow():
+    import prepare
     df = get_zillow_2017()
 
     # Lose very small amount dropping nan values
@@ -155,8 +156,13 @@ def wrangle_zillow():
     df = df.drop(df[df.yearbuilt<1850].index)
     # Drop properties that have more bathrooms than bedrooms
     df = df.drop(df[df.bedroomcnt<df.bathroomcnt].index)
-    return df
+    
+    train, validate, test = prepare.split_data(df)
+    
+    return df, train, validate, test
 
+
+# # Based on the work you've done, choose a scaling method for your dataset. Write a function within your prepare.py that accepts as input the train, validate, and test data splits, and returns the scaled versions of each. Be sure to only learn the parameters for scaling from your training data!
 
 # In[ ]:
 
