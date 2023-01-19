@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 import os
 import env
 
+from sklearn.feature_selection import SelectKBest, f_regression
+from sklearn.linear_model import LinearRegression
+from sklearn.feature_selection import RFE
 
 # In[7]:
 
@@ -24,120 +27,6 @@ def get_zillow_2017():
         df.to_csv('zillow_2017.csv')
         return df
 
-
-# In[8]:
-
-
-df = get_zillow_2017()
-
-
-# In[11]:
-
-
-# 2.1 million rows, 7 columns
-df.shape
-
-
-# In[13]:
-
-
-# FIPS (a unique county identifier code), all columns should be numeric
-df.head()
-
-
-# taxvaluedollarcnt: total tax assessed value of the parcel  
-# taxamount: total property tax assessed yearly
-
-# In[15]:
-
-
-# All dtypes are numeric - that's good
-df.dtypes
-
-
-# In[20]:
-
-
-# There are 2152863 rows - 9337 nan values is less than .5% of the data
-df.isnull().sum()
-
-
-# In[27]:
-
-
-# If we drop all nan values we drop from 2152863 to 2140235 = keeping 99.4% of data - good enough!
-df.dropna().shape
-
-
-# In[29]:
-
-
-df = df.dropna()
-
-
-# In[35]:
-
-
-#Looking for errors in data - 18 bedrooms and 0 bathrooms?
-df[df.bedroomcnt>15]
-
-
-# In[37]:
-
-
-# 5326 rows have either 0 bedrooms or bathrooms - again, such a small amount that it's worth dropping
-# These are single family residential, so not looking at land without structures or a barn
-df[(df.bedroomcnt==0) | (df.bathroomcnt==0)]
-
-
-# In[40]:
-
-
-# Drop all rows with either no bedrooms or bathrooms
-df = df.drop(df[(df.bedroomcnt==0) | (df.bathroomcnt==0)].index)
-
-
-# In[44]:
-
-
-# Drop all properties under 250 square feet (this is a small tiny home)
-df = df.drop(df[df.calculatedfinishedsquarefeet<250].index)
-
-
-# In[46]:
-
-
-# Drop all properties where value is less than taxes
-df = df.drop(df[df.taxvaluedollarcnt<df.taxamount].index)
-
-
-# In[49]:
-
-
-# Drop all properties built before 1850 - suspicious
-df = df.drop(df[df.yearbuilt<1850].index)
-
-
-# In[52]:
-
-
-# Drop properties that have more bathrooms than bedrooms
-df = df.drop(df[df.bedroomcnt<df.bathroomcnt].index)
-
-
-# In[53]:
-
-
-df.describe()
-
-
-# In[56]:
-
-
-df.bedroomcnt.min()
-
-
-# In[58]:
 
 
 def wrangle_zillow():
@@ -161,11 +50,38 @@ def wrangle_zillow():
     
     return df, train, validate, test
 
+def get_split(df):
+    train, validate, test = split_data(df)
+    return train, validate, test
 
-# # Based on the work you've done, choose a scaling method for your dataset. Write a function within your prepare.py that accepts as input the train, validate, and test data splits, and returns the scaled versions of each. Be sure to only learn the parameters for scaling from your training data!
+def scale_minmax(train,validate,test):
+    '''
+    Takes in train, validate, and test sets and returns the minmax scaled dfs
+    '''
+    scaler = sklearn.preprocessing.MinMaxScaler()
+    scaler.fit(train)
+    train[train.columns] = scaler.transform(train[train.columns])
+    validate[validate.columns] = scaler.transform(validate[validate.columns])
+    test[test.columns] = scaler.fit(test[test.columns])
+    
+    return train, validate, test
 
-# In[ ]:
 
+def rfe(x,y,k):
 
+    
+    lm = LinearRegression()
+    rfe = RFE(lm,n_features_to_select=k)
+    rfe.fit(x,y)
+    
+    mask = rfe.support_
+    
+    return x.columns[mask]
 
+def select_kbest(x,y,k):
+
+    f_selector = SelectKBest(f_regression,k=k)
+    f_selector.fit(x,y)
+    mask = f_selector.get_support()
+    return x.columns[mask]
 
