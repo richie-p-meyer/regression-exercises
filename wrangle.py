@@ -13,6 +13,8 @@ import env
 from sklearn.feature_selection import SelectKBest, f_regression
 from sklearn.linear_model import LinearRegression
 from sklearn.feature_selection import RFE
+from sklearn.model_selection import train_test_split
+import sklearn.preprocessing
 
 # In[7]:
 
@@ -46,13 +48,30 @@ def wrangle_zillow():
     # Drop properties that have more bathrooms than bedrooms
     df = df.drop(df[df.bedroomcnt<df.bathroomcnt].index)
     
-    train, validate, test = prepare.split_data(df)
+    df.columns = ['bed', 'bath', 'squarefeet', 'value', 'yearbuilt', 'taxamount', 'fips'] 
     
-    return df, train, validate, test
+    
+    return df
 
-def get_split(df):
-    train, validate, test = split_data(df)
-    return train, validate, test
+
+def split_data(df, target):
+    '''
+    Splits a df into a train, validate, and test set. 
+    target is the feature you will predict
+    '''
+    full = df
+    train_validate, test = train_test_split(df, train_size =.8, random_state = 21)
+    train, validate = train_test_split(train_validate, train_size = .7, random_state = 21)
+    X_train = train.drop(columns=target)
+    y_train = train[target]
+    X_val = validate.drop(columns=target)
+    y_val = validate[target]
+    X_test = test.drop(columns=target)
+    y_test = test[target]
+    
+    X_train,X_val,X_test = scale_minmax(X_train,X_val,X_test)
+    
+    return train, X_train, y_train, X_val, y_val, X_test, y_test
 
 def scale_minmax(train,validate,test):
     '''
@@ -62,7 +81,7 @@ def scale_minmax(train,validate,test):
     scaler.fit(train)
     train[train.columns] = scaler.transform(train[train.columns])
     validate[validate.columns] = scaler.transform(validate[validate.columns])
-    test[test.columns] = scaler.fit(test[test.columns])
+    test[test.columns] = scaler.transform(test[test.columns])
     
     return train, validate, test
 
